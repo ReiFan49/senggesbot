@@ -1,0 +1,143 @@
+from os import getenv
+from collections import deque
+from urllib.parse import urlencode
+import asyncio
+from discord import utils
+from discord import FFmpegPCMAudio, PCMVolumeTransformer
+# from discord.ext.commands import check
+from discord.ext.commands import command, Cog
+from discord.ext.commands.context import Context
+from discord.ext.commands.view import StringView
+from utils import temporary
+
+def get_tts_url(text, lang='id'):
+  return "{}?{}".format(
+    "https://translate.google.com/translate_tts",
+    urlencode({
+      'ie': 'UTF-8',
+      'client': 'tw-ob',
+      'tl': lang,
+      'q': text,
+    })
+  )
+
+class TTS(Cog):
+  def __init__(self, bot):
+    self.bot = bot
+    self.queues = {}
+
+  def reset_queue(self, server_id, force=False):
+    if server_id in self.queues:
+      if force:
+        self.queues[server_id].clear()
+    else:
+      self.queues[server_id] = deque()
+
+  def destroy_queue(self, server_id):
+    if server_id in self.queues:
+      self.queues.pop(server_id)
+
+  async def can_enqueue_voice(self, ctx):
+    if not ctx.author.voice:
+      # VC bots require both in VC.
+      return False
+    if ctx.author.voice and \
+       (ctx.guild.id in self.queues and self.queues[ctx.guild.id]) and \
+       (ctx.voice_client and ctx.voice_client.channel != ctx.author.voice.channel):
+      # Must not move while having queue
+      return False
+    if ctx.voice_client is None:
+      # Connect whenever necessary
+      await ctx.author.voice.channel.connect()
+    return True
+
+  @Cog.listener('on_voice_state_update')
+  async def voice_state_check(self, member, state_before, state_after):
+    bot_expected_id = int(getenv('DISCORD_CLIENT_ID'), 10)
+    if member.id == bot_expected_id:
+      if state_before.channel is None and state_after.channel is not None:
+        await self.perform_join(state_after.channel)
+      elif state_before.channel is not None and state_after.channel is None:
+        await self.perform_leave(state_before.channel)
+    pass
+
+  async def perform_join(self, channel):
+    server_id = channel.guild.id
+    self.reset_queue(server_id, force=True)
+
+  async def perform_leave(self, channel):
+    server_id = channel.guild.id
+    self.destroy_queue(server_id)
+
+  def perform_speak(self, ctx, *, query):
+    player = PCMVolumeTransformer(FFmpegPCMAudio(get_tts_url(query)))
+    def wrap_deque(err):
+      self.perform_deque(ctx, err)
+    ctx.voice_client.play(player, after=wrap_deque)
+
+  def perform_deque(self, ctx, error):
+    server_id = ctx.guild.id
+    if server_id not in self.queues:
+      return
+    queue = self.queues[server_id]
+    if len(queue) > 0:
+      self.perform_speak(ctx, query=queue.popleft())
+
+  async def is_valid_message(self, ctx):
+    if ctx.message.author.bot:
+      return False
+
+    if not ctx.message.guild:
+      return False
+
+    prefix = await self.bot.get_prefix(ctx.message)
+    if isinstance(prefix, str):
+      if len(ctx.message.content) <= len(prefix) or ctx.message.content[:len(prefix)] != prefix:
+        return False
+      ctx.prefix = prefix
+    else:
+      for _prefix in prefix:
+        if ctx.message.content.startswith(_prefix):
+          ctx.prefix = _prefix
+          break
+      else:
+        return False
+
+    return True
+
+  @Cog.listener('on_message')
+  async def receiving_tts_message(self, msg):
+    ctx = Context(prefix=None, view=StringView(msg.content), bot=self.bot, message=msg)
+    # Given a set of criteria, message must be valid
+    # - Server/Guild only
+    # - Uses given prefix
+    if not await self.is_valid_message(ctx):
+      return
+
+    ctx.view.skip_string(ctx.prefix)
+    # Reject commands
+    closest_word = ctx.view.get_word()
+    if closest_word in self.bot.all_commands:
+      return
+    ctx.view.undo()
+
+    # Parse clean message
+    if not ctx.view.buffer[ctx.view.index].isspace():
+      return
+    rem_msg = ctx.view.read_rest().strip()
+    with temporary.swap_variable(msg, 'content', rem_msg):
+      clean_msg = msg.clean_content
+
+    await self.can_enqueue_voice(ctx)
+    self.reset_queue(ctx.guild.id, force=False)
+    queue = self.queues.get(ctx.guild.id, [])
+
+    if ctx.voice_client.is_playing() or len(queue) > 0:
+      queue.append(clean_msg)
+    else:
+      self.perform_speak(ctx, query=clean_msg)
+
+  @command()
+  async def leave(self, ctx):
+    if ctx.voice_client is not None:
+      await ctx.voice_client.disconnect()
