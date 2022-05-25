@@ -42,10 +42,12 @@ class TTS(Cog):
       # VC bots require both in VC.
       return False
     if ctx.author.voice and \
-       (ctx.guild.id in self.queues and self.queues[ctx.guild.id]) and \
        (ctx.voice_client and ctx.voice_client.channel != ctx.author.voice.channel):
       # Must not move while having queue
-      return False
+      if (ctx.guild.id in self.queues and self.queues[ctx.guild.id]) or \
+         (ctx.voice_client and ctx.voice_client.is_playing()):
+        return False
+      await ctx.voice_client.move_to(ctx.author.voice.channel)
     if ctx.voice_client is None:
       # Connect whenever necessary
       await ctx.author.voice.channel.connect()
@@ -59,6 +61,7 @@ class TTS(Cog):
         await self.perform_join(state_after.channel)
       elif state_before.channel is not None and state_after.channel is None:
         await self.perform_leave(state_before.channel)
+      return
     pass
 
   async def perform_join(self, channel):
@@ -128,11 +131,16 @@ class TTS(Cog):
     with temporary.swap_variable(msg, 'content', rem_msg):
       clean_msg = msg.clean_content
 
-    await self.can_enqueue_voice(ctx)
+    is_ok = await self.can_enqueue_voice(ctx)
+    if not is_ok:
+      return
     self.reset_queue(ctx.guild.id, force=False)
     queue = self.queues.get(ctx.guild.id, [])
 
-    if ctx.voice_client.is_playing() or len(queue) > 0:
+    is_playing = ctx.voice_client and ctx.voice_client.is_playing()
+    if len(queue) > 0 and not is_playing:
+      self.perform_deque(ctx, None)
+    elif len(queue) > 0 and is_playing:
       queue.append(clean_msg)
     else:
       self.perform_speak(ctx, query=clean_msg)
