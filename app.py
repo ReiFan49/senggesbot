@@ -4,6 +4,7 @@ import os
 import discord
 from discord.utils import oauth_url
 from discord.ext import commands, tasks
+from discord.ext.commands import CommandNotFound
 from dotenv import load_dotenv
 
 from plugins import tts
@@ -18,6 +19,13 @@ bot = commands.Bot(
 )
 
 bot.add_cog(tts.TTS(bot))
+
+# https://stackoverflow.com/a/52900437
+@bot.event
+async def on_command_error(ctx, error):
+  if isinstance(error, CommandNotFound):
+    return
+  raise error
 
 if __name__ == '__main__':
   print(
