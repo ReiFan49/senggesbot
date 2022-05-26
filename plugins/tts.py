@@ -4,7 +4,7 @@ from urllib.parse import urlencode
 from time import time
 from ctypes.util import find_library
 import asyncio
-from discord import utils
+from discord import opus, utils
 from discord import FFmpegPCMAudio, PCMVolumeTransformer
 # from discord.ext.commands import check
 from discord.ext.commands import command, Cog
@@ -12,6 +12,9 @@ from discord.ext.commands.context import Context
 from discord.ext.commands.view import StringView
 from discord.ext import tasks
 from utils import temporary
+
+if not opus.is_loaded():
+  opus.load_opus(find_library('opus'))
 
 def get_tts_url(text, lang='id'):
   return "{}?{}".format(
