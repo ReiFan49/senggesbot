@@ -1,0 +1,4 @@
+#!/bin/bash
+docker stop sengges-bot
+docker rm sengges-bot
+docker image rmi sengges-tts

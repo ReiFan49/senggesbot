@@ -1,0 +1,4 @@
+#!/bin/bash
+docker build -t sengges-tts .
+docker run --name sengges-bot --detach sengges-tts:latest
+# docker run --name sengges-bot sengges-tts:latest
