@@ -1,6 +1,8 @@
 from os import getenv
 from collections import deque
 from urllib.parse import urlencode
+from time import time
+from ctypes.util import find_library
 import asyncio
 from discord import utils
 from discord import FFmpegPCMAudio, PCMVolumeTransformer
@@ -8,6 +10,7 @@ from discord import FFmpegPCMAudio, PCMVolumeTransformer
 from discord.ext.commands import command, Cog
 from discord.ext.commands.context import Context
 from discord.ext.commands.view import StringView
+from discord.ext import tasks
 from utils import temporary
 
 def get_tts_url(text, lang='id'):
@@ -21,10 +24,14 @@ def get_tts_url(text, lang='id'):
     })
   )
 
+IDLE_TIME_LIMIT = 300
+
 class TTS(Cog):
   def __init__(self, bot):
     self.bot = bot
     self.queues = {}
+    self.last_response = {}
+    self.poll_idle_time.start()
 
   def reset_queue(self, server_id, force=False):
     if server_id in self.queues:
@@ -36,6 +43,7 @@ class TTS(Cog):
   def destroy_queue(self, server_id):
     if server_id in self.queues:
       self.queues.pop(server_id)
+      self.last_response.pop(server_id)
 
   async def can_enqueue_voice(self, ctx):
     if not ctx.author.voice:
@@ -72,6 +80,19 @@ class TTS(Cog):
     server_id = channel.guild.id
     self.destroy_queue(server_id)
 
+  @tasks.loop(seconds = 1)
+  async def poll_idle_time(self):
+    ctime = time()
+    for server_id, last_voice_response in self.last_response.items():
+      if ctime - last_voice_response <= IDLE_TIME_LIMIT:
+        continue
+      guild = self.bot.get_guild(server_id)
+      if guild.voice_client is None:
+        continue
+      if guild.voice_client.is_playing():
+        continue
+      await guild.voice_client.disconnect()
+
   def perform_speak(self, ctx, *, query):
     player = PCMVolumeTransformer(FFmpegPCMAudio(get_tts_url(query)))
     def wrap_deque(err):
@@ -80,6 +101,7 @@ class TTS(Cog):
 
   def perform_deque(self, ctx, error):
     server_id = ctx.guild.id
+    self.last_response[server_id] = time()
     if server_id not in self.queues:
       return
     queue = self.queues[server_id]
