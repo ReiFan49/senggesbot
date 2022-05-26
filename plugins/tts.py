@@ -161,8 +161,11 @@ class TTS(Cog):
 
     is_playing = ctx.voice_client and ctx.voice_client.is_playing()
     if len(queue) > 0 and not is_playing:
+      # Enforce deque if the bot is stuck.
       self.perform_deque(ctx, None)
-    elif len(queue) > 0 and is_playing:
+      queue.append(clean_msg)
+    elif len(queue) > 0 or is_playing:
+      # Append the queue if it's been playing something or had things in queue.
       queue.append(clean_msg)
     else:
       self.perform_speak(ctx, query=clean_msg)
