@@ -6,6 +6,7 @@ from ctypes.util import find_library
 import asyncio
 from discord import opus, utils
 from discord import FFmpegPCMAudio, PCMVolumeTransformer
+from discord.message import Message
 # from discord.ext.commands import check
 from discord.ext.commands import command, Cog
 from discord.ext.commands.context import Context
@@ -172,6 +173,14 @@ class TTS(Cog):
       queue.append(clean_msg)
     else:
       self.perform_speak(ctx, query=clean_msg)
+
+  @Cog.listener('on_raw_message_edit')
+  async def handle_raw_edit(self, raw):
+    data = raw.data
+    conn = self.bot._connection
+    channel, _ = conn._get_guild_channel(data)
+    message = Message(channel=channel, data=data, state=conn)
+    await self.receiving_tts_message(message)
 
   @command()
   async def leave(self, ctx):
