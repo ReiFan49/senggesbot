@@ -27,6 +27,10 @@ async def on_command_error(ctx, error):
     return
   raise error
 
+async def bot_leave_voices(bot):
+  for vc in bot.voice_clients:
+    await vc.disconnect()
+
 if __name__ == '__main__':
   print(
     "Invite:",
@@ -36,5 +40,10 @@ if __name__ == '__main__':
     )
   )
 
-  bot.run(os.getenv('DISCORD_CLIENT_TOKEN'), bot=True)
-
+  try:
+    bot.loop.run_until_complete(bot.start(os.getenv('DISCORD_CLIENT_TOKEN'), bot=True))
+  except KeyboardInterrupt:
+    bot.loop.run_until_complete(bot_leave_voices(bot))
+    bot.loop.run_until_complete(bot.logout())
+  finally:
+    bot.loop.close()
