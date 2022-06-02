@@ -191,9 +191,13 @@ class TTS(Cog):
   async def handle_raw_edit(self, raw):
     data = raw.data
     conn = self.bot._connection
-    channel, _ = conn._get_guild_channel(data)
-    message = Message(channel=channel, data=data, state=conn)
-    await self.receiving_tts_message(message)
+    try:
+      channel, _ = conn._get_guild_channel(data)
+      message = Message(channel=channel, data=data, state=conn)
+    except:
+      pass
+    else:
+      await self.receiving_tts_message(message)
 
   @command()
   async def leave(self, ctx):
