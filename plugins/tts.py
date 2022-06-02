@@ -5,7 +5,7 @@ from time import time
 from ctypes.util import find_library
 import asyncio
 from discord import opus, utils
-from discord import FFmpegPCMAudio, PCMVolumeTransformer
+from discord import ChannelType, FFmpegPCMAudio, PCMVolumeTransformer
 from discord.message import Message
 # from discord.ext.commands import check
 from discord.ext.commands import command, Cog
@@ -50,6 +50,10 @@ class TTS(Cog):
       self.last_response.pop(server_id)
 
   async def can_enqueue_voice(self, ctx):
+    if ctx.message.channel.type == ChannelType.voice:
+      # Disallow different Internal Voice channel when bot is active
+      if (ctx.voice_client and ctx.message.channel != ctx.voice_client.channel):
+        return False
     if not ctx.author.voice:
       # VC bots require both in VC.
       return False
