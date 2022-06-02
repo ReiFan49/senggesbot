@@ -136,6 +136,19 @@ class TTS(Cog):
 
   @Cog.listener('on_message')
   async def receiving_tts_message(self, msg):
+    # Apply short circuit checker for server-wide mute.
+    author = msg.author
+    author_voice = None
+    if hasattr(author, 'voice'):
+      author_voice = author.voice
+    if author_voice and author_voice.mute:
+      # Ignore all queries from server-wide muted user.
+      return
+    elif author_voice is None:
+      # Ignore?
+      pass
+    del author, author_voice
+
     ctx = Context(prefix=None, view=StringView(msg.content), bot=self.bot, message=msg)
     # Given a set of criteria, message must be valid
     # - Server/Guild only
