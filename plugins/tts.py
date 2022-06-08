@@ -13,6 +13,7 @@ from discord.ext.commands.context import Context
 from discord.ext.commands.view import StringView
 from discord.ext import tasks
 from utils import temporary
+from utils import discord as discord_utils
 
 if not opus.is_loaded():
   opus.load_opus(find_library('opus'))
@@ -173,6 +174,7 @@ class TTS(Cog):
     rem_msg = ctx.view.read_rest().strip()
     with temporary.swap_variable(msg, 'content', rem_msg):
       clean_msg = msg.clean_content
+      clean_msg = discord_utils.cleanup_text(clean_msg)
 
     is_ok = await self.can_enqueue_voice(ctx)
     if not is_ok:
