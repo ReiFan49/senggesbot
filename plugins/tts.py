@@ -146,7 +146,7 @@ class TTS(Cog):
     author_voice = None
     if hasattr(author, 'voice'):
       author_voice = author.voice
-    if author_voice and author_voice.mute:
+    if author_voice and (author_voice.mute or author_voice.self_deaf):
       # Ignore all queries from server-wide muted user.
       return
     elif author_voice is None:
