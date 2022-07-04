@@ -81,8 +81,35 @@ def cleanup_discord_metatime(text):
 def cleanup_discord_emojis(text):
   return re.sub(r'<[a]?:([A-Za-z0-9_]+):(\d+)>', r'\1', text)
 
+def cleanup_censors(text):
+  try:
+    for line in open('filters/remove.txt', 'r').readlines():
+      line = line.strip()
+      text = re.sub(r'\b' + re.escape(line) + r'\b', '', text, flags=re.I)
+  except:
+    pass
+
+  try:
+    for line in open('filters/side_remove.txt', 'r').readlines():
+      line = line.strip()
+      text = re.sub(r'\b' + re.escape(line) + r'*\b', '', text, flags=re.I)
+      text = re.sub(r'\b*' + re.escape(line) + r'\b', '', text, flags=re.I)
+  except:
+    pass
+
+  try:
+    for target_line, replace_line in zip(*([iter(open('filters/replace.txt', 'r').readlines())]*2)):
+      target_line = target_line.strip()
+      replace_line = replace_line.strip()
+      text = re.sub(r'\b' + re.escape(target_line) + r'\b', replace_line, text, flags=re.I)
+  except:
+    pass
+
+  return text
+
 def cleanup_text(text):
   text = cleanup_markdown(text)
   text = cleanup_twemojis(text)
   text = cleanup_discord_metatext(text)
+  text = cleanup_censors(text)
   return text
