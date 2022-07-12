@@ -30,6 +30,7 @@ def get_tts_url(text, lang='id'):
   )
 
 IDLE_TIME_LIMIT = 300
+SWITCH_TIME_COOLDOWN = 5
 
 class TTS(Cog):
   def __init__(self, bot):
@@ -51,6 +52,7 @@ class TTS(Cog):
       self.last_response.pop(server_id)
 
   async def can_enqueue_voice(self, ctx):
+    ctime = time()
     if ctx.message.channel.type == ChannelType.voice:
       # Disallow different Internal Voice channel when bot is active
       if (ctx.voice_client and ctx.message.channel != ctx.voice_client.channel):
@@ -58,11 +60,15 @@ class TTS(Cog):
     if not ctx.author.voice:
       # VC bots require both in VC.
       return False
+    # Must not move while having queue
     if ctx.author.voice and \
        (ctx.voice_client and ctx.voice_client.channel != ctx.author.voice.channel):
-      # Must not move while having queue
+      # Queue not empty / Voice is currently playing
       if (ctx.guild.id in self.queues and self.queues[ctx.guild.id]) or \
          (ctx.voice_client and ctx.voice_client.is_playing()):
+        return False
+      # Last voice is less than 5 sec.
+      if (ctime - self.last_response.get(ctx.guild.id, 0) < SWITCH_TIME_COOLDOWN):
         return False
       await ctx.voice_client.move_to(ctx.author.voice.channel)
     if ctx.voice_client is None:
