@@ -29,6 +29,7 @@ def get_tts_url(text, lang='id'):
     })
   )
 
+GOOGLE_INSTANT_API = True
 IDLE_TIME_LIMIT = 300
 SWITCH_TIME_COOLDOWN = 5
 
@@ -181,6 +182,9 @@ class TTS(Cog):
     with temporary.swap_variable(msg, 'content', rem_msg):
       clean_msg = msg.clean_content
       clean_msg = discord_utils.cleanup_text(clean_msg)
+    # Old API
+    if GOOGLE_INSTANT_API:
+      clean_msg = clean_msg[:100]
 
     is_ok = await self.can_enqueue_voice(ctx)
     if not is_ok:
