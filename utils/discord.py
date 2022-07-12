@@ -97,8 +97,8 @@ def cleanup_censors(text):
   try:
     for line in open('filters/side_remove.txt', 'r').readlines():
       line = line.strip()
-      text = re.sub(r'\b' + re.escape(line) + r'*\b', '', text, flags=re.I)
-      text = re.sub(r'\b*' + re.escape(line) + r'\b', '', text, flags=re.I)
+      text = re.sub(r'\b' + re.escape(line) + r'.*\b', '', text, flags=re.I)
+      text = re.sub(r'\b.*' + re.escape(line) + r'\b', '', text, flags=re.I)
   except:
     pass
 
