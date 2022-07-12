@@ -16,7 +16,12 @@ def cleanup_markdown(text):
   return text
 
 def cleanup_twemojis(text):
-  return emoji.demojize(text, delimiters=('', ''))
+  def handle_emoji(emote, emote_data):
+    emoji_names = []
+    emoji_names.append(emote_data['en'])
+    emoji_names.append(emote_data.get('alias', []))
+    return min(emoji_names, key=len)[1:-1]
+  return emoji.demojize(text, delimiters=('',) * 2, language="alias", handle_version=handle_emoji)
 
 def cleanup_discord_metatext(text):
   text = cleanup_discord_metatime(text)
