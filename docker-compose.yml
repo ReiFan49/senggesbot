@@ -1,0 +1,28 @@
+version: '3.2'
+services:
+  senggesbot:
+    build:
+      context: $HOME/discord-senggesbot
+      labels:
+        net.bloom-juery.description: "discord sengges bot"
+        net.bloom-juery.author: "Rei Hakurei"
+        org.opencontainers.image.source: "https://github.com/ReiFan49/senggesbot"
+      tags:
+      - bloom-jewel/marine-sengges
+      - ghcr.io/reifan49/senggesbot
+      - cloud.canister.io:5000/reifan49/senggesbot
+      - bloom-jewel/marine-sengges:1.1
+      - ghcr.io/reifan49/senggesbot:1.1
+      - cloud.canister.io:5000/reifan49/senggesbot:1.1
+    image: bloom-jewel/marine-sengges
+    container_name: discord.sengges-tts
+    pull_policy: build
+    volumes:
+    - type: bind
+      source: ./.env
+      target: /app/.env
+      read_only: true
+    - type: bind
+      source: ./filters
+      target: /app/filters
+      read_only: true
